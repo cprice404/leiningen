@@ -81,7 +81,7 @@
                          ((juxt :source-paths :test-paths :resource-paths) project))]
       (.mkdirs (io/file path))))
   (write-pom-properties project)
-  (classpath/resolve-dependencies :dependencies project)
+  (classpath/resolve-managed-dependencies :dependencies :managed-dependencies project)
   (run-prep-tasks project)
   (deliver @prep-blocker true)
   (reset! prep-blocker (promise)))
