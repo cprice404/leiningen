@@ -2,7 +2,6 @@
   (:use [clojure.test]
         [leiningen.core.classpath])
   (:require [clojure.java.io :as io]
-            [clojure.set :as set]
             [leiningen.core.user :as user]
             [leiningen.test.helper :as lthelper]
             [leiningen.core.project :as project]))
@@ -17,7 +16,8 @@
 (defn m2-file [f]
   (io/file (System/getProperty "user.home") ".m2" "repository" f))
 
-(def project {:dependencies '[[org.clojure/clojure "1.3.0"]
+(def project {:managed-dependencies '[[org.clojure/clojure "1.3.0"]]
+              :dependencies '[[org.clojure/clojure]
                               [ring/ring-core "1.0.0"
                                :exclusions [commons-codec]]]
               :checkout-deps-shares [:source-paths :resource-paths
@@ -32,24 +32,40 @@
 (deftest test-resolve-deps
   (doseq [f (reverse (file-seq (io/file (:root project))))]
     (when (.exists f) (io/delete-file f)))
+  (println "T-R-D RESOLVING DEPS; MDeps:" (get project :managed-dependencies))
   (is (= #{(m2-file "org/clojure/clojure/1.3.0/clojure-1.3.0.jar")
            (m2-file "commons-io/commons-io/1.4/commons-io-1.4.jar")
            (m2-file "javax/servlet/servlet-api/2.5/servlet-api-2.5.jar")
            (m2-file "ring/ring-core/1.0.0/ring-core-1.0.0.jar")
            (m2-file (str "commons-fileupload/commons-fileupload/1.2.1/"
                          "commons-fileupload-1.2.1.jar"))}
-         (set (resolve-dependencies :dependencies project)))))
+         (set (resolve-managed-dependencies :dependencies
+                                            :managed-dependencies
+                                            project)))))
 
 (deftest test-dependency-hierarchy
   (doseq [f (reverse (file-seq (io/file (:root project))))]
     (when (.exists f) (io/delete-file f)))
+  (println "EXPECTED:")
+  (clojure.pprint/pprint '{[org.clojure/clojure "1.3.0"] nil
+                           [ring/ring-core "1.0.0"
+                            :exclusions [[commons-codec]]]
+                           {[commons-fileupload "1.2.1"] nil
+                            [commons-io "1.4"] nil
+                            [javax.servlet/servlet-api "2.5"] nil}})
+  (println "ACTUAL:")
+  (clojure.pprint/pprint (managed-dependency-hierarchy :dependencies
+                                                       :managed-dependencies
+                                                       project))
   (is (= '{[org.clojure/clojure "1.3.0"] nil
           [ring/ring-core "1.0.0"
            :exclusions [[commons-codec]]]
           {[commons-fileupload "1.2.1"] nil
            [commons-io "1.4"] nil
            [javax.servlet/servlet-api "2.5"] nil}}
-         (dependency-hierarchy :dependencies project))))
+         (managed-dependency-hierarchy :dependencies
+                                       :managed-dependencies
+                                       project))))
 
 (def directories
   (vec (map lthelper/pathify

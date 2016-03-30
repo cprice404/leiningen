@@ -254,7 +254,10 @@
         {:keys [repositories local-repo offline? update
                 checksum mirrors] :as project}
         {:keys [add-classpath? repository-session-fn] :as args}]
-     {:pre [(every? vector? (get project dependencies-key))]}
+     {:pre [(every? vector? (get project dependencies-key))
+            (every? vector? (get project managed-dependencies-key))]}
+     (println "!!!!IN GDM, MD KEY:" managed-dependencies-key)
+     (println "\tMDS:" (get project managed-dependencies-key))
      (try
        ((if add-classpath?
           pomegranate/add-dependencies
@@ -265,6 +268,7 @@
         :repositories (->> repositories
                            (map add-repo-auth)
                            (map (partial update-policies update checksum)))
+        :managed-coordinates (get project managed-dependencies-key)
         :coordinates (get project dependencies-key)
         :mirrors (->> mirrors
                       (map add-repo-auth)
@@ -410,14 +414,19 @@
 
 (defn ^:internal get-dependencies [dependencies-key managed-dependencies-key
                                    project & args]
+  (println "GET-DEPS, MDKEY:" managed-dependencies-key)
+  (println "GET-DEPS, MDs:" (get project managed-dependencies-key))
   (let [ranges (atom []), overrides (atom [])
         session (pedantic-session project ranges overrides)
         args (assoc (apply hash-map args) :repository-session-fn session)
-        trimmed (select-keys project [dependencies-key :repositories :checksum
-                                      :local-repo :offline? :update :mirrors])
+        trimmed (select-keys project [dependencies-key managed-dependencies-key
+                                      :repositories :checksum :local-repo :offline?
+                                      :update :mirrors])
         deps-result (get-dependencies-memoized dependencies-key
                                                managed-dependencies-key
                                                trimmed args)]
+    ;(println "RAW MEMOIZED DEPS RESULT:")
+    ;(println deps-result)
     (pedantic-do (:pedantic? project) @ranges @overrides)
     deps-result))
 
@@ -492,8 +501,7 @@
 
 (defn resolve-managed-dependencies
   "TODO"
-  [dependencies-key managed-dependencies-key
-   {:keys [native-path] :as project} & rest]
+  [dependencies-key managed-dependencies-key project & rest]
   (let [dependencies-tree (apply get-dependencies dependencies-key
                                  managed-dependencies-key project rest)
         jars (->> dependencies-tree
@@ -518,11 +526,16 @@
 (defn managed-dependency-hierarchy
   "TODO"
   [dependencies-key managed-dependencies-key project & options]
-  (if-let [deps-list (get project dependencies-key)]
+  ;; TODO: explain private call
+  (if-let [deps-list (#'aether/merge-versions-from-managed-coords
+                      (get project dependencies-key)
+                      (get project managed-dependencies-key))]
     (aether/dependency-hierarchy deps-list
                                  (apply get-dependencies dependencies-key
                                         managed-dependencies-key
-                                        project options))))
+                                        project options)))
+
+  )
 
 (defn dependency-hierarchy
   "Returns a graph of the project's dependencies."
@@ -578,7 +591,8 @@
                      (:resource-paths project)
                      [(:compile-path project)]
                      (checkout-deps-paths project)
-                     (for [dep (resolve-dependencies :dependencies project)]
+                     (for [dep (resolve-managed-dependencies
+                                :dependencies :managed-dependencies project)]
                        (.getAbsolutePath dep)))
         :when path]
     (normalize-path (:root project) path)))
