@@ -122,7 +122,6 @@ force them to be updated, use `lein -U $TASK`."
                             project
                             [{:pedantic? (quote ^:displace warn)}])
                    [dependencies-key managed-dependencies-key] (tree-command command)
-                   _ (println "DEPS: dk:" dependencies-key ", mdk:" managed-dependencies-key)
                    hierarchy (classpath/managed-dependency-hierarchy
                               dependencies-key
                               managed-dependencies-key

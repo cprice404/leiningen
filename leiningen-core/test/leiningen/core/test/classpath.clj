@@ -32,7 +32,6 @@
 (deftest test-resolve-deps
   (doseq [f (reverse (file-seq (io/file (:root project))))]
     (when (.exists f) (io/delete-file f)))
-  (println "T-R-D RESOLVING DEPS; MDeps:" (get project :managed-dependencies))
   (is (= #{(m2-file "org/clojure/clojure/1.3.0/clojure-1.3.0.jar")
            (m2-file "commons-io/commons-io/1.4/commons-io-1.4.jar")
            (m2-file "javax/servlet/servlet-api/2.5/servlet-api-2.5.jar")
@@ -46,17 +45,6 @@
 (deftest test-dependency-hierarchy
   (doseq [f (reverse (file-seq (io/file (:root project))))]
     (when (.exists f) (io/delete-file f)))
-  (println "EXPECTED:")
-  (clojure.pprint/pprint '{[org.clojure/clojure "1.3.0"] nil
-                           [ring/ring-core "1.0.0"
-                            :exclusions [[commons-codec]]]
-                           {[commons-fileupload "1.2.1"] nil
-                            [commons-io "1.4"] nil
-                            [javax.servlet/servlet-api "2.5"] nil}})
-  (println "ACTUAL:")
-  (clojure.pprint/pprint (managed-dependency-hierarchy :dependencies
-                                                       :managed-dependencies
-                                                       project))
   (is (= '{[org.clojure/clojure "1.3.0"] nil
           [ring/ring-core "1.0.0"
            :exclusions [[commons-codec]]]

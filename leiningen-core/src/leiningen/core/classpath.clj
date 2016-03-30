@@ -256,8 +256,6 @@
         {:keys [add-classpath? repository-session-fn] :as args}]
      {:pre [(every? vector? (get project dependencies-key))
             (every? vector? (get project managed-dependencies-key))]}
-     (println "!!!!IN GDM, MD KEY:" managed-dependencies-key)
-     (println "\tMDS:" (get project managed-dependencies-key))
      (try
        ((if add-classpath?
           pomegranate/add-dependencies
@@ -414,8 +412,6 @@
 
 (defn ^:internal get-dependencies [dependencies-key managed-dependencies-key
                                    project & args]
-  (println "GET-DEPS, MDKEY:" managed-dependencies-key)
-  (println "GET-DEPS, MDs:" (get project managed-dependencies-key))
   (let [ranges (atom []), overrides (atom [])
         session (pedantic-session project ranges overrides)
         args (assoc (apply hash-map args) :repository-session-fn session)
@@ -425,8 +421,6 @@
         deps-result (get-dependencies-memoized dependencies-key
                                                managed-dependencies-key
                                                trimmed args)]
-    ;(println "RAW MEMOIZED DEPS RESULT:")
-    ;(println deps-result)
     (pedantic-do (:pedantic? project) @ranges @overrides)
     deps-result))
 
@@ -530,14 +524,10 @@
   (if-let [deps-list (#'aether/merge-versions-from-managed-coords
                       (get project dependencies-key)
                       (get project managed-dependencies-key))]
-    (do
-      (println "M-D-H, deps-list:" deps-list)
-      (aether/dependency-hierarchy deps-list
-                                   (apply get-dependencies dependencies-key
-                                          managed-dependencies-key
-                                          project options))))
-
-  )
+    (aether/dependency-hierarchy deps-list
+                                 (apply get-dependencies dependencies-key
+                                        managed-dependencies-key
+                                        project options))))
 
 (defn dependency-hierarchy
   "Returns a graph of the project's dependencies."
