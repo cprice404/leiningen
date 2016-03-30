@@ -228,7 +228,7 @@
 (defn ^:internal classpath-arg [project]
   (let [classpath-string (string/join java.io.File/pathSeparatorChar
                                       (classpath/get-classpath project))
-        agent-tree (classpath/get-dependencies :java-agents project)
+        agent-tree (classpath/get-dependencies :java-agents nil project)
         ;; Seems like you'd expect dependency-files to walk the whole tree
         ;; here, but it doesn't, which is what we want. but maybe a bug?
         agent-jars (aether/dependency-files (aether/dependency-hierarchy
