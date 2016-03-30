@@ -530,10 +530,12 @@
   (if-let [deps-list (#'aether/merge-versions-from-managed-coords
                       (get project dependencies-key)
                       (get project managed-dependencies-key))]
-    (aether/dependency-hierarchy deps-list
-                                 (apply get-dependencies dependencies-key
-                                        managed-dependencies-key
-                                        project options)))
+    (do
+      (println "M-D-H, deps-list:" deps-list)
+      (aether/dependency-hierarchy deps-list
+                                   (apply get-dependencies dependencies-key
+                                          managed-dependencies-key
+                                          project options))))
 
   )
 
