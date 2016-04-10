@@ -555,7 +555,7 @@
   (seq
    (->> (filter ext-dependency? (:dependencies project))
         (assoc project :dependencies)
-        (resolve-dependencies :dependencies)
+        (resolve-managed-dependencies :dependencies :managed-dependencies)
         (map (memfn getAbsolutePath)))))
 
 (defn ^:internal checkout-deps-paths
