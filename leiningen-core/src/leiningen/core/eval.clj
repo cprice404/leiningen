@@ -339,7 +339,7 @@
   (when (:debug project)
     (System/setProperty "clojure.debug" "true"))
   ;; :dependencies are loaded the same way as plugins in eval-in-leiningen
-  (project/load-plugins project :dependencies)
+  (project/load-plugins project :dependencies :managed-dependencies)
   (doseq [path (classpath/get-classpath project)]
     (pomegranate/add-classpath path))
   (doseq [opt (get-jvm-args project)
