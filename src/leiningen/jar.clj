@@ -336,7 +336,8 @@ With an argument, the jar will be built with an alternate main."
        (let [scoped-profiles (set (project/pom-scope-profiles project :provided))
              default-profiles (set (project/expand-profile project :default))
              provided-profiles (remove
-                                (set/difference default-profiles scoped-profiles)
+                                (set scoped-profiles)
+                                #_(set/difference default-profiles scoped-profiles)
                                 (-> project meta :included-profiles))
              project (preprocess-project project main)]
          (merge (main-jar project provided-profiles main)
