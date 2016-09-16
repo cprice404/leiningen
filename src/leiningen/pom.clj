@@ -366,6 +366,7 @@
        (re-find #"SNAPSHOT" (:version project))))
 
 (defn check-for-snapshot-deps [project]
+  (println "CHECKING FOR SNAPSHOT DEPS: " (:dependencies project))
   (when (and (not (snapshot? project))
              (not (System/getenv "LEIN_SNAPSHOTS_IN_RELEASE")))
     (let [merged-deps (classpath/merge-versions-from-managed-coords
@@ -383,6 +384,7 @@
            project (-> project
                        (project/unmerge-profiles profile-kws)
                        (vary-meta assoc ::original-project project))]
+       (println "MAKE-POM, CALLING CHECK FOR SNAPSHOT DEPS:" project)
        (check-for-snapshot-deps project)
        (str
         (xml/indent-str
@@ -402,6 +404,7 @@
 (defn ^{:help-arglists '([])} pom
   "Write a pom.xml file to disk for Maven interoperability."
   ([project pom-location-or-properties]
+   (println "POM; PROJECT: " project)
      (let [pom (make-pom project true)
            pom-file (io/file (:root project) pom-location-or-properties)]
        (.mkdirs (.getParentFile pom-file))

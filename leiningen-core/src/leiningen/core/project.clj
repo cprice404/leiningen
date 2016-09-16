@@ -74,12 +74,25 @@
   "Transform a dependency vector into a map that is easier to combine with
   meta-merge. This allows a profile to override specific dependency options."
   [dep]
-  (if-let [[id version & {:as opts}] dep]
+  #_(if-let [[id version & {:as opts}] dep]
     (-> opts
         (merge (artifact-map id))
         (assoc :version version)
         (update-each-contained [:exclusions] (partial map exclusion-map))
-        (with-meta (meta dep)))))
+        (with-meta (meta dep))))
+  (if dep
+    (let [id (first dep)
+          sec (second dep)
+          version (if-not (keyword? sec) sec)
+          opts (apply hash-map
+                      (if (keyword? sec)
+                        (nthrest dep 3)
+                        (nthrest dep 2)))]
+      (-> opts
+          (merge (artifact-map id))
+          (assoc :version version)
+          (update-each-contained [:exclusions] (partial map exclusion-map))
+          (with-meta (meta dep))))))
 
 (defn dependency-vec
   "Transform a dependency map back into a vector of the form:
@@ -356,6 +369,7 @@
 
 (defn make
   ([project project-name version root]
+   (println "MAKE1")
      (make (with-meta (assoc project
                         :name (name project-name)
                         :group (or (namespace project-name)
@@ -364,23 +378,29 @@
                         :root root)
              (meta project))))
   ([project]
-     (let [repos (if (:omit-default-repositories project)
-                   (do (warn "WARNING:"
-                             ":omit-default-repositories is deprecated;"
-                             "use :repositories ^:replace [...] instead.")
-                       empty-repositories)
-                   default-repositories)]
-       (setup-map-defaults
-        (-> (meta-merge defaults project)
-            (dissoc :eval-in-leiningen :omit-default-repositories)
-            (assoc :eval-in (or (:eval-in project)
-                                (if (:eval-in-leiningen project)
-                                  :leiningen, :subprocess)))
-            (update-each-contained [:profiles] setup-map-of-profiles)
-            (with-meta (meta project)))
-        (assoc empty-meta-merge-defaults
-          :repositories repos
-          :plugin-repositories repos)))))
+   (println "MAKE2! " project)
+   (let [make-result (let [repos (if (:omit-default-repositories project)
+                                   (do (warn "WARNING:"
+                                             ":omit-default-repositories is deprecated;"
+                                             "use :repositories ^:replace [...] instead.")
+                                       empty-repositories)
+                                   default-repositories)]
+                       (setup-map-defaults
+                        (-> (meta-merge defaults project)
+                            (dissoc :eval-in-leiningen :omit-default-repositories)
+                            (assoc :eval-in (or (:eval-in project)
+                                                (if (:eval-in-leiningen project)
+                                                  :leiningen, :subprocess)))
+                            (update-each-contained [:profiles] setup-map-of-profiles)
+                            (with-meta (meta project)))
+                        (assoc empty-meta-merge-defaults
+                          :repositories repos
+                          :plugin-repositories repos)))]
+     (println "RETURNING FROM MAKE2: " make-result)
+     make-result
+
+
+     )))
 
 (defn- argument-list->argument-map
   [args]
@@ -413,6 +433,7 @@
 
 (defn- add-global-exclusions [project]
   (let [{:keys [dependencies exclusions]} project]
+    (println "ADDING GLOBAL EXCLUSIONS, DEPS: " dependencies)
     (if-let [exclusions (and (seq dependencies) (seq exclusions))]
       (assoc project
         :dependencies (with-meta
@@ -893,6 +914,7 @@
   "Initializes a project by loading certificates, plugins, middleware, etc.
 Also merges default profiles."
   ([project default-profiles]
+   (println "INIT PROJECT: " project)
      (-> (project-with-profiles (doto project
                                   (load-certificates)
                                   (init-lein-classpath)
@@ -970,7 +992,12 @@ Also merges default profiles."
 (defn read
   "Read project map out of file, which defaults to project.clj.
 Also initializes the project; see read-raw for a version that skips init."
-  ([file profiles] (init-project (read-raw file) profiles))
+  ([file profiles] #_(init-project (read-raw file) profiles)
+   (let [raw (read-raw file)]
+     (println "READING " file)
+     (println "RAW:" raw)
+     (init-project raw profiles))
+   )
   ([file] (read file [:default]))
   ([] (read "project.clj")))
 

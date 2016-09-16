@@ -355,7 +355,7 @@
     (is (not (snapshot? nil)))))
 
 (deftest test-managed-dependencies
-  (doseq [proj [managed-deps-snapshot-project
+  (doseq [proj [#_managed-deps-snapshot-project
                 managed-deps-project]]
     (let [xml (xml/parse-str
                (make-pom proj))]

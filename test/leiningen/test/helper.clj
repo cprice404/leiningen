@@ -72,7 +72,9 @@
 
 (def with-classifiers-project (read-test-project "with-classifiers"))
 
-(def managed-deps-project (read-test-project "managed-deps"))
+(def managed-deps-project (let [x (read-test-project "managed-deps")]
+                            (println "READ MANAGED DEPS PROJECT: " x)
+                            x))
 
 (def managed-deps-snapshot-project (read-test-project "managed-deps-snapshot"))
 
