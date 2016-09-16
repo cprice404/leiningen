@@ -531,7 +531,7 @@
                                    :managed-dependencies)]
     (apply resolve-managed-dependencies dependencies-key managed-dependencies-key project rest)))
 
-(defn prepare-dep-for-aether
+(defn normalize-dep-vector
   [dep]
   (if dep
     (let [id (first dep)
@@ -542,9 +542,9 @@
                  (nthrest dep 2))]
       (concat [id version] opts))))
 
-(defn prepare-deps-for-aether
+(defn normalize-dep-vectors
   [deps]
-  (map prepare-dep-for-aether deps))
+  (map normalize-dep-vector deps))
 
 (defn merge-versions-from-managed-coords
   [deps managed-deps]
@@ -555,7 +555,7 @@
   ;;  is merged.
   (println "MERGING VERSIONS FOR DEPS: " deps)
   (#'aether/merge-versions-from-managed-coords
-   (prepare-deps-for-aether deps)
+   (normalize-dep-vectors deps)
    managed-deps))
 
 (defn managed-dependency-hierarchy

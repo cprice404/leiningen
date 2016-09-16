@@ -81,7 +81,15 @@
         (update-each-contained [:exclusions] (partial map exclusion-map))
         (with-meta (meta dep))))
   (if dep
-    (let [id (first dep)
+    (let [dep (classpath/normalize-dep-vector dep)
+          [id version & {:as opts}] dep]
+      (-> opts
+          (merge (artifact-map id))
+          (assoc :version version)
+          (update-each-contained [:exclusions] (partial map exclusion-map))
+          (with-meta (meta dep)))
+      )
+    #_(let [id (first dep)
           sec (second dep)
           version (if-not (keyword? sec) sec)
           opts (apply hash-map
@@ -141,9 +149,13 @@
 (defn- different-priority?
   "Returns true if either left has a higher priority than right or vice versa."
   [left right]
-  (boolean
-   (or (some (some-fn nil? displace? replace?) [left right])
-       (top-displace? left))))
+  (println "DIFFERENT PRIORITY?, LEFT: " left)
+  (println "DIFFERENT PRIORITY?, RIGHT: " right)
+  (let [result (boolean
+                (or (some (some-fn nil? displace? replace?) [left right])
+                    (top-displace? left)))]
+    (println "DIFFERENT PRIORITY?, RESULT: " result)
+    result))
 
 (defn- remove-top-displace [obj]
   (if-not (top-displace? obj)
@@ -154,6 +166,8 @@
   "Picks the highest prioritized element of left and right and merge their
   metadata."
   [left right]
+  (println "PICK PRIORITIZED, LEFT: " left)
+  (println "PICK PRIORITIZED, RIGHT: " right)
   (cond (nil? left) right
         (nil? right) (remove-top-displace left)
 
@@ -243,6 +257,8 @@
       (select-keys [:group-id :artifact-id :classifier :extension])))
 
 (defn- reduce-dep-step [deps dep]
+  (println "REDUCE DEP STEP, DEPS:" deps)
+  (println "REDUCE DEP STEP, DEP:" dep)
   (let [k (dep-key dep)]
     (update-first deps #(= k (dep-key %))
                   (fn [existing]
@@ -328,25 +344,35 @@
   reducing functions and other metadata properties, replacing aliases and
   normalizing values inside the map."
   [raw-map empty-defaults]
+  (println "IN SETUP MAP DEFAULTS, RAW MAP: " (:dependencies raw-map))
   (with-meta
-    (merge-with
-     (fn [left right]
-       ;; Assumes that left always contains :reduce OR :prepend in its meta
-       (with-meta
-         (cond (different-priority? left right) (pick-prioritized left right)
-               (-> left meta :reduce) (-> left meta :reduce
-                                          (reduce left right))
-               (-> left meta :prepend) (concat right left))
-         (merge (meta left)
-                (dissoc (meta right) :top-displace))))
-     empty-defaults
-     (-> raw-map
-         (assoc :jvm-opts (or (:jvm-opts raw-map) (:java-opts raw-map)))
-         (assoc :eval-in (or (:eval-in raw-map)
-                             (if (:eval-in-leiningen raw-map)
-                               :leiningen)))
-         (dissoc :eval-in-leiningen :java-opts)
-         (normalize-values)))
+   (let [map-defaults-result (merge-with
+                              (fn [left right]
+                                (println "SETUP MAP DEFAULTS INNER MERGE, LEFT: " left)
+                                (println "SETUP MAP DEFAULTS INNER MERGE, LEFT REDUCE: " (-> left meta :reduce))
+                                (println "SETUP MAP DEFAULTS INNER MERGE, RIGHT: " right)
+                                ;; Assumes that left always contains :reduce OR :prepend in its meta
+                                (let [inner-merge-result (with-meta
+                                                          (cond (different-priority? left right) (pick-prioritized left right)
+                                                                (-> left meta :reduce) (-> left meta :reduce
+                                                                                           (reduce left right))
+                                                                (-> left meta :prepend) (concat right left))
+                                                          (merge (meta left)
+                                                                 (dissoc (meta right) :top-displace)))]
+                                  (println "SETUP MAP DEFAULTS INNER MERGE, RESULT: " inner-merge-result)
+                                  inner-merge-result))
+                              empty-defaults
+                              (let [merge-input (-> raw-map
+                                                    (assoc :jvm-opts (or (:jvm-opts raw-map) (:java-opts raw-map)))
+                                                    (assoc :eval-in (or (:eval-in raw-map)
+                                                                        (if (:eval-in-leiningen raw-map)
+                                                                          :leiningen)))
+                                                    (dissoc :eval-in-leiningen :java-opts)
+                                                    (normalize-values))]
+                                (println "SETUP MAP DEFAULTS; MERGE INPUT: " (:dependencies merge-input))
+                                merge-input))]
+     (println "FINISHED SETUP MAP DEFAULTS MERGE-WITH: " (:dependencies map-defaults-result))
+     map-defaults-result)
     (meta raw-map)))
 
 (defn- setup-profile-with-empty
@@ -386,13 +412,15 @@
                                        empty-repositories)
                                    default-repositories)]
                        (setup-map-defaults
-                        (-> (meta-merge defaults project)
-                            (dissoc :eval-in-leiningen :omit-default-repositories)
-                            (assoc :eval-in (or (:eval-in project)
-                                                (if (:eval-in-leiningen project)
-                                                  :leiningen, :subprocess)))
-                            (update-each-contained [:profiles] setup-map-of-profiles)
-                            (with-meta (meta project)))
+                        (let [map-defaults-first-arg (-> (meta-merge defaults project)
+                                                         (dissoc :eval-in-leiningen :omit-default-repositories)
+                                                         (assoc :eval-in (or (:eval-in project)
+                                                                             (if (:eval-in-leiningen project)
+                                                                               :leiningen, :subprocess)))
+                                                         (update-each-contained [:profiles] setup-map-of-profiles)
+                                                         (with-meta (meta project)))]
+                          (println "MAP DEFAULTS FIRST ARG:" (:dependencies map-defaults-first-arg))
+                          map-defaults-first-arg)
                         (assoc empty-meta-merge-defaults
                           :repositories repos
                           :plugin-repositories repos)))]
@@ -535,32 +563,36 @@
 (defn- meta-merge
   "Recursively merge values based on the information in their metadata."
   [left right]
-  (cond (different-priority? left right)
-        (pick-prioritized left right)
+  (println "META MERGE LEFT:" left)
+  (println "META MERGE RIGHT:" right)
+  (let [result (cond (different-priority? left right)
+                     (pick-prioritized left right)
 
-        (-> left meta :reduce)
-        (-> left meta :reduce
-            (reduce left right)
-            (with-meta (meta left)))
+                     (-> left meta :reduce)
+                     (-> left meta :reduce
+                         (reduce left right)
+                         (with-meta (meta left)))
 
-        (and (map? left) (map? right))
-        (merge-with meta-merge left right)
+                     (and (map? left) (map? right))
+                     (merge-with meta-merge left right)
 
-        (and (set? left) (set? right))
-        (set/union right left)
+                     (and (set? left) (set? right))
+                     (set/union right left)
 
-        (and (coll? left) (coll? right))
-        (if (or (-> left meta :prepend)
-                (-> right meta :prepend))
-          (-> (concat right left)
-              (with-meta (merge (meta right) (meta left))))
-          (concat left right))
+                     (and (coll? left) (coll? right))
+                     (if (or (-> left meta :prepend)
+                             (-> right meta :prepend))
+                       (-> (concat right left)
+                           (with-meta (merge (meta right) (meta left))))
+                       (concat left right))
 
-        (= (class left) (class right)) right
+                     (= (class left) (class right)) right
 
-        :else
-        (do (warn left "and" right "have a type mismatch merging profiles.")
-            right)))
+                     :else
+                     (do (warn left "and" right "have a type mismatch merging profiles.")
+                         right))]
+    (println "META MERGE RESULT: " result)
+    result))
 
 (defn- apply-profiles [project profiles]
   (reduce (fn [project profile]
