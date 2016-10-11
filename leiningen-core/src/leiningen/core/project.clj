@@ -74,6 +74,7 @@
   "Transform a dependency vector into a map that is easier to combine with
   meta-merge. This allows a profile to override specific dependency options."
   [dep]
+  (println "DEPENDENCY MAP, CONVERTING:" dep)
   (if-let [[id version & {:as opts}] (classpath/normalize-dep-vector dep)]
     (-> opts
         (merge (artifact-map id))
@@ -141,34 +142,41 @@
   "Picks the highest prioritized element of left and right and merge their
   metadata."
   [left right]
-  (cond (nil? left) right
-        (nil? right) (remove-top-displace left)
+  (println "PICKING PRIORITIZED")
+  (println "\tLEFT:" left)
+  (println "\tRIGHT:" right)
+  (do (let [result (cond (nil? left) right
+                         (nil? right) (remove-top-displace left)
 
-        ;; TODO: support :reverse?
-        (top-displace? left) right
-        (and (displace? left) (top-displace? right)) left
+                         ;; TODO: support :reverse?
+                         (top-displace? left) right
+                         (and (displace? left) (top-displace? right)) left
 
-        (and (displace? left)   ;; Pick the rightmost
-             (displace? right)) ;; if both are marked as displaceable
-        (with-meta* right
-          (merge (meta* left) (meta* right)))
+                         (and (displace? left)              ;; Pick the rightmost
+                              (displace? right))            ;; if both are marked as displaceable
+                         (with-meta* right
+                                     (merge (meta* left) (meta* right)))
 
-        (and (replace? left)    ;; Pick the rightmost
-             (replace? right))  ;; if both are marked as replaceable
-        (with-meta* right
-          (merge (meta* left) (meta* right)))
+                         (and (replace? left)               ;; Pick the rightmost
+                              (replace? right))             ;; if both are marked as replaceable
+                         (with-meta* right
+                                     (merge (meta* left) (meta* right)))
 
-        (or (displace? left)
-            (replace? right))
-        (with-meta* right
-          (merge (-> left meta* (dissoc :displace))
-                 (-> right meta* (dissoc :replace))))
+                         (or (displace? left)
+                             (replace? right))
+                         (with-meta* right
+                                     (merge (-> left meta* (dissoc :displace))
+                                            (-> right meta* (dissoc :replace))))
 
-        (or (replace? left)
-            (displace? right))
-        (with-meta* left
-          (merge (-> right meta* (dissoc :displace))
-                 (-> left meta* (dissoc :replace))))))
+                         (or (replace? left)
+                             (displace? right))
+                         (with-meta* left
+                                     (merge (-> right meta* (dissoc :displace))
+                                            (-> left meta* (dissoc :replace)))))]
+        (println "\tRETURNING:" result)
+        (if (= result [['org.clojure/clojure]])
+          (throw (IllegalStateException. "D'OH")))
+        result)))
 
 (declare meta-merge)
 
@@ -230,6 +238,7 @@
       (select-keys [:group-id :artifact-id :classifier :extension])))
 
 (defn- reduce-dep-step [deps dep]
+  (println "REDUCE DEP STEP: " dep)
   (let [k (dep-key dep)]
     (update-first deps #(= k (dep-key %))
                   (fn [existing]
@@ -339,15 +348,27 @@
 (defn- setup-profile-with-empty
   "Setup a profile map with empty defaults."
   [raw-profile]
-  (if (composite-profile? raw-profile)
-    ;; TODO: drop support for partially-composite profiles in 3.0
-    (with-meta
-      (mapv #(cond-> % (composite-profile? %) setup-profile-with-empty)
-            raw-profile)
-      (meta raw-profile))
-    (let [empty-defaults (select-keys empty-meta-merge-defaults
-                                      (keys raw-profile))]
-      (setup-map-defaults raw-profile empty-defaults))))
+  (println "SETTING UP PROFILE WITH EMPTY:" raw-profile)
+  (let [result (if (composite-profile? raw-profile)
+                 ;; TODO: drop support for partially-composite profiles in 3.0
+                 (with-meta
+                  (mapv #(cond-> % (composite-profile? %) setup-profile-with-empty)
+                        raw-profile)
+                  (meta raw-profile))
+                 (let [empty-defaults (select-keys empty-meta-merge-defaults
+                                                   (keys raw-profile))]
+                   (setup-map-defaults
+                    (assoc raw-profile
+                      :dependencies
+                      (classpath/normalize-dep-vectors
+                       (:dependencies raw-profile)))
+                    ;raw-profile
+                    empty-defaults)))]
+    (println "RESULTING PROFILE:" result)
+    (println "\tdeps meta:" (meta (:dependencies result)))
+    result
+
+    ))
 
 (defn- setup-map-of-profiles
   "Setup a map of profile maps with empty defaults."
@@ -514,6 +535,9 @@
 (defn- meta-merge
   "Recursively merge values based on the information in their metadata."
   [left right]
+  (println "META MERGE!")
+  (println "\tLEFT:" (:dependencies left))
+  (println "\tRIGHT:" (:dependencies right))
   (cond (different-priority? left right)
         (pick-prioritized left right)
 

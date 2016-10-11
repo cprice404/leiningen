@@ -538,8 +538,9 @@
   due to the use of `:managed-dependencies`, and to inject a `nil` into the
   vector in the place where the version string should be."
   [dep]
+  (println "NORMALIZING DEP:" dep)
   ;; Some plugins may replace a keyword with a version string later on, so
-  ;; assume that even lenght vectors are alright. If not, then they will blow up
+  ;; assume that even length vectors are alright. If not, then they will blow up
   ;; at a later stage.
   (if (even? (count dep))
     dep
@@ -559,6 +560,7 @@
   and to inject a `nil` into the vector in the place where the version string
   should be."
   [deps]
+  (println "NORMALIZING DEP VECTORS")
   (map normalize-dep-vector deps))
 
 (defn merge-versions-from-managed-coords
@@ -568,6 +570,7 @@
   ;;  via the symbol dereference for now, but this can be changed to a
   ;;  regular function call once https://github.com/cemerick/pomegranate/pull/74
   ;;  is merged.
+  (println "MERGE VERSIONS FROM MANAGED COORDS!")
   (#'aether/merge-versions-from-managed-coords
    (normalize-dep-vectors deps)
    managed-deps))

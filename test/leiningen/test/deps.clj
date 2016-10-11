@@ -8,7 +8,9 @@
             [leiningen.core.utils :as utils]
             [leiningen.core.eval :as eval]
             [leiningen.core.classpath :as classpath]
-            [cemerick.pomegranate.aether :as aether]))
+            [cemerick.pomegranate.aether :as aether]
+            [clojure.pprint]
+            [leiningen.core.project :as project]))
 
 (deftest ^:online test-deps
   (let [sample-deps [["rome" "0.9"] ["jdom" "1.0"]]]
@@ -203,3 +205,19 @@
                                                          (fn [dep] (= 'org.clojure/tools.reader (first dep))))
                                                         first
                                                         second)))))))
+
+(deftest test-managed-deps-with-profiles
+  (testing "Able to resolve deps when profile omits versions in deps"
+    (println "\n")
+    (println "ADD DEPS:")
+    (println "RAW PROJECT DEPS:" (:dependencies managed-deps-project))
+    (println "RAW PROJECT DEPS AGAIN:" (:dependencies managed-deps-project))
+    (clojure.pprint/pprint (:dependencies (project/set-profiles managed-deps-project [:add-deps])))
+    (println "!!!!CALLING DEPS!")
+    (deps (project/set-profiles managed-deps-project [:add-deps])))
+  (testing "Able to resolve deps when profile with ^:replace omits versions in deps"
+    (println "\n")
+    (println "REPLACE DEPS:")
+    (clojure.pprint/pprint (:dependencies (project/set-profiles managed-deps-project [:replace-deps])))
+    (println "!!!!CALLING DEPS!")
+    (deps (project/set-profiles managed-deps-project [:replace-deps]))))
