@@ -208,16 +208,16 @@
 
 (deftest test-managed-deps-with-profiles
   (testing "Able to resolve deps when profile omits versions in deps"
-    (println "\n")
-    (println "ADD DEPS:")
-    (println "RAW PROJECT DEPS:" (:dependencies managed-deps-project))
-    (println "RAW PROJECT DEPS AGAIN:" (:dependencies managed-deps-project))
-    (clojure.pprint/pprint (:dependencies (project/set-profiles managed-deps-project [:add-deps])))
-    (println "!!!!CALLING DEPS!")
+    ;(println "\n")
+    ;(println "ADD DEPS:")
+    ;(println "RAW PROJECT DEPS:" (:dependencies managed-deps-project))
+    ;(println "RAW PROJECT DEPS AGAIN:" (:dependencies managed-deps-project))
+    ;(clojure.pprint/pprint (:dependencies (project/set-profiles managed-deps-project [:add-deps])))
+    ;(println "!!!!CALLING DEPS!")
     (deps (project/set-profiles managed-deps-project [:add-deps])))
   (testing "Able to resolve deps when profile with ^:replace omits versions in deps"
-    (println "\n")
-    (println "REPLACE DEPS:")
-    (clojure.pprint/pprint (:dependencies (project/set-profiles managed-deps-project [:replace-deps])))
-    (println "!!!!CALLING DEPS!")
+    ;(println "\n")
+    ;(println "REPLACE DEPS:")
+    ;(clojure.pprint/pprint (:dependencies (project/set-profiles managed-deps-project [:replace-deps])))
+    ;(println "!!!!CALLING DEPS!")
     (deps (project/set-profiles managed-deps-project [:replace-deps]))))

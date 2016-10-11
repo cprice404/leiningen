@@ -74,7 +74,7 @@
   "Transform a dependency vector into a map that is easier to combine with
   meta-merge. This allows a profile to override specific dependency options."
   [dep]
-  (println "DEPENDENCY MAP, CONVERTING:" dep)
+  ;(println "DEPENDENCY MAP, CONVERTING:" dep)
   (if-let [[id version & {:as opts}] (classpath/normalize-dep-vector dep)]
     (-> opts
         (merge (artifact-map id))
@@ -142,9 +142,9 @@
   "Picks the highest prioritized element of left and right and merge their
   metadata."
   [left right]
-  (println "PICKING PRIORITIZED")
-  (println "\tLEFT:" left)
-  (println "\tRIGHT:" right)
+  ;(println "PICKING PRIORITIZED")
+  ;(println "\tLEFT:" left)
+  ;(println "\tRIGHT:" right)
   (do (let [result (cond (nil? left) right
                          (nil? right) (remove-top-displace left)
 
@@ -173,7 +173,7 @@
                          (with-meta* left
                                      (merge (-> right meta* (dissoc :displace))
                                             (-> left meta* (dissoc :replace)))))]
-        (println "\tRETURNING:" result)
+        ;(println "\tRETURNING:" result)
         (if (= result [['org.clojure/clojure]])
           (throw (IllegalStateException. "D'OH")))
         result)))
@@ -238,7 +238,7 @@
       (select-keys [:group-id :artifact-id :classifier :extension])))
 
 (defn- reduce-dep-step [deps dep]
-  (println "REDUCE DEP STEP: " dep)
+  ;(println "REDUCE DEP STEP: " dep)
   (let [k (dep-key dep)]
     (update-first deps #(= k (dep-key %))
                   (fn [existing]
@@ -345,10 +345,28 @@
          (normalize-values)))
     (meta raw-map)))
 
+(defn- with-normalized-deps
+  [profile]
+  #_(let [deps (:dependencies profile)]
+    (with-meta
+     (assoc profile
+       :dependencies
+       (with-meta
+        (classpath/normalize-dep-vectors deps)
+        (meta deps)))
+     (meta profile)))
+  (let [deps (:dependencies profile)]
+    (assoc profile
+      :dependencies
+      (with-meta
+       (classpath/normalize-dep-vectors deps)
+       (meta deps))))
+  )
+
 (defn- setup-profile-with-empty
   "Setup a profile map with empty defaults."
   [raw-profile]
-  (println "SETTING UP PROFILE WITH EMPTY:" raw-profile)
+  #_(println "SETTING UP PROFILE WITH EMPTY:" raw-profile)
   (let [result (if (composite-profile? raw-profile)
                  ;; TODO: drop support for partially-composite profiles in 3.0
                  (with-meta
@@ -358,14 +376,11 @@
                  (let [empty-defaults (select-keys empty-meta-merge-defaults
                                                    (keys raw-profile))]
                    (setup-map-defaults
-                    (assoc raw-profile
-                      :dependencies
-                      (classpath/normalize-dep-vectors
-                       (:dependencies raw-profile)))
+                    (with-normalized-deps raw-profile)
                     ;raw-profile
                     empty-defaults)))]
-    (println "RESULTING PROFILE:" result)
-    (println "\tdeps meta:" (meta (:dependencies result)))
+    #_(println "RESULTING PROFILE:" result)
+    #_(println "\tdeps meta:" (meta (:dependencies result)))
     result
 
     ))
@@ -535,9 +550,9 @@
 (defn- meta-merge
   "Recursively merge values based on the information in their metadata."
   [left right]
-  (println "META MERGE!")
-  (println "\tLEFT:" (:dependencies left))
-  (println "\tRIGHT:" (:dependencies right))
+  ;(println "META MERGE!")
+  ;(println "\tLEFT:" (:dependencies left))
+  ;(println "\tRIGHT:" (:dependencies right))
   (cond (different-priority? left right)
         (pick-prioritized left right)
 
